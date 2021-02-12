@@ -1,0 +1,30 @@
+# Build artifacts
+bin/
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.out
+*.exe
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and runtime dumps
+*.log
+*.wal
+*.csv.dump
+*.trace
+
+# Editor and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
