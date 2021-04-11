@@ -813,6 +813,7 @@ int vm_run(VM *vm, Chunk *chunk) {
             case OP_PRINT: {
                 Value v = vm_pop(vm);
                 val_print(v);
+                printf(" ");
                 val_release(v);
                 break;
             }

@@ -3,9 +3,14 @@ CLI Runner for executing Relay BASIC programs with the Python Reference Engine.
 """
 
 import sys
-from .lexer import Lexer
-from .parser import Parser
-from .interpreter import Interpreter
+try:
+    from .lexer import Lexer
+    from .parser import Parser
+    from .interpreter import Interpreter
+except (ImportError, ValueError):
+    from tools.pyrelay.lexer import Lexer
+    from tools.pyrelay.parser import Parser
+    from tools.pyrelay.interpreter import Interpreter
 
 def run_source(source: str) -> Interpreter:
     lexer = Lexer(source)

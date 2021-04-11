@@ -305,6 +305,10 @@ typedef struct {
 } SubroutineDef;
 
 typedef struct {
+    char name[64];
+} GlobalVar;
+
+typedef struct {
     Lexer lexer;
     Token current;
     Token previous;
@@ -316,9 +320,27 @@ typedef struct {
     int local_count;
     int scope_depth;
 
+    GlobalVar globals[256];
+    int global_count;
+
     SubroutineDef subs[128];
     int sub_count;
 } Compiler;
+
+static int resolve_or_add_global(Compiler *c, const char *name, size_t len) {
+    for (int i = 0; i < c->global_count; ++i) {
+        if (strlen(c->globals[i].name) == len &&
+            strncasecmp(c->globals[i].name, name, len) == 0) {
+            return i;
+        }
+    }
+    if (c->global_count >= 256) return 0;
+    int idx = c->global_count++;
+    size_t copy_len = len < 63 ? len : 63;
+    strncpy(c->globals[idx].name, name, copy_len);
+    c->globals[idx].name[copy_len] = '\0';
+    return idx;
+}
 
 static void comp_error(Compiler *c, const char *msg) {
     if (c->had_error) return;
@@ -486,13 +508,8 @@ static void primary(Compiler *c) {
                     emit_bytes(c, OP_LOAD_LOCAL, (uint8_t)local);
                     emit_byte(c, OP_ARRAY_GET);
                 } else {
-                    char id_buf[64];
-                    strncpy(id_buf, name, len < 63 ? len : 63);
-                    id_buf[len < 63 ? len : 63] = '\0';
-                    Value name_val = val_string(id_buf);
-                    int idx = add_constant(c, name_val);
-                    val_release(name_val);
-                    emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)idx);
+                    int g_idx = resolve_or_add_global(c, name, len);
+                    emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)g_idx);
                     emit_byte(c, OP_ARRAY_GET);
                 }
             }
@@ -504,13 +521,8 @@ static void primary(Compiler *c) {
         if (local >= 0) {
             emit_bytes(c, OP_LOAD_LOCAL, (uint8_t)local);
         } else {
-            char id_buf[64];
-            strncpy(id_buf, name, len < 63 ? len : 63);
-            id_buf[len < 63 ? len : 63] = '\0';
-            Value name_val = val_string(id_buf);
-            int idx = add_constant(c, name_val);
-            val_release(name_val);
-            emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)idx);
+            int g_idx = resolve_or_add_global(c, name, len);
+            emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)g_idx);
         }
 
         if (comp_match(c, TOK_DOT)) {
@@ -635,17 +647,30 @@ static void dim_statement(Compiler *c) {
         }
     }
 
-    add_local(c, name, len, false);
-    int slot = resolve_local(c, name, len);
-
-    if (is_array) {
-        emit_byte(c, OP_ARRAY_ALLOC);
-        emit_bytes(c, OP_STORE_LOCAL, (uint8_t)slot);
-        emit_byte(c, OP_POP);
+    if (c->scope_depth > 0) {
+        add_local(c, name, len, false);
+        int slot = resolve_local(c, name, len);
+        if (is_array) {
+            emit_byte(c, OP_ARRAY_ALLOC);
+            emit_bytes(c, OP_STORE_LOCAL, (uint8_t)slot);
+            emit_byte(c, OP_POP);
+        } else {
+            emit_byte(c, OP_CONST_NIL);
+            emit_bytes(c, OP_STORE_LOCAL, (uint8_t)slot);
+            emit_byte(c, OP_POP);
+        }
     } else {
-        emit_byte(c, OP_CONST_NIL);
-        emit_bytes(c, OP_STORE_LOCAL, (uint8_t)slot);
-        emit_byte(c, OP_POP);
+        /* Global variable */
+        int idx = resolve_or_add_global(c, name, len);
+        if (is_array) {
+            emit_byte(c, OP_ARRAY_ALLOC);
+            emit_bytes(c, OP_STORE_GLOBAL, (uint8_t)idx);
+            emit_byte(c, OP_POP);
+        } else {
+            emit_byte(c, OP_CONST_NIL);
+            emit_bytes(c, OP_STORE_GLOBAL, (uint8_t)idx);
+            emit_byte(c, OP_POP);
+        }
     }
 }
 
@@ -727,15 +752,19 @@ static void assignment_or_call(Compiler *c) {
                 emit_bytes(c, OP_LOAD_LOCAL, (uint8_t)local);
                 emit_byte(c, OP_ARRAY_SET);
                 emit_byte(c, OP_POP);
+            } else {
+                int idx = resolve_or_add_global(c, name, len);
+                emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)idx);
+                emit_byte(c, OP_ARRAY_SET);
+                emit_byte(c, OP_POP);
             }
         } else {
             if (local >= 0) {
                 emit_bytes(c, OP_STORE_LOCAL, (uint8_t)local);
                 emit_byte(c, OP_POP);
             } else {
-                add_local(c, name, len, false);
-                local = resolve_local(c, name, len);
-                emit_bytes(c, OP_STORE_LOCAL, (uint8_t)local);
+                int idx = resolve_or_add_global(c, name, len);
+                emit_bytes(c, OP_STORE_GLOBAL, (uint8_t)idx);
                 emit_byte(c, OP_POP);
             }
         }
@@ -795,6 +824,7 @@ bool relay_compile(const char *source, Chunk *out_chunk, char *err_buffer, size_
     c.chunk = out_chunk;
     c.had_error = false;
     c.local_count = 0;
+    c.global_count = 0;
     c.scope_depth = 0;
     c.sub_count = 0;
     memset(c.error_msg, 0, sizeof(c.error_msg));
