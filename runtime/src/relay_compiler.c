@@ -677,6 +677,22 @@ static void dim_statement(Compiler *c) {
 static void if_statement(Compiler *c) {
     expression(c);
     comp_consume(c, TOK_THEN, "Expected THEN after IF condition");
+
+    if (!comp_check(c, TOK_NEWLINE) && !comp_check(c, TOK_COLON) && !comp_check(c, TOK_EOF)) {
+        /* Single-line IF: IF condition THEN statement [ELSE statement] */
+        size_t then_jump = emit_jump(c, OP_JUMP_IF_FALSE);
+        statement(c);
+        if (comp_match(c, TOK_ELSE)) {
+            size_t else_jump = emit_jump(c, OP_JUMP);
+            patch_jump(c, then_jump);
+            statement(c);
+            patch_jump(c, else_jump);
+        } else {
+            patch_jump(c, then_jump);
+        }
+        return;
+    }
+
     skip_statement_terminators(c);
 
     size_t then_jump = emit_jump(c, OP_JUMP_IF_FALSE);

@@ -301,6 +301,18 @@ class Parser:
     def _if_statement(self) -> IfNode:
         cond = self._expression()
         self._consume(TokenType.THEN, "Expected THEN after IF condition")
+
+        if not self._check(TokenType.NEWLINE) and not self._check(TokenType.COLON) and not self._check(TokenType.EOF):
+            # Single-line IF statement
+            then_stmt = self._statement()
+            then_body = [then_stmt] if then_stmt else []
+            else_body = []
+            if self._match(TokenType.ELSE):
+                else_stmt = self._statement()
+                if else_stmt:
+                    else_body = [else_stmt]
+            return IfNode(cond, then_body, else_body)
+
         self._skip_terminators()
 
         then_body = []
