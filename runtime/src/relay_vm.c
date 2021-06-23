@@ -698,7 +698,7 @@ int vm_run(VM *vm, Chunk *chunk) {
             case OP_AND: {
                 Value b = vm_pop(vm);
                 Value a = vm_pop(vm);
-                vm_push(vm, val_int((to_int(a) && to_int(b)) ? 1 : 0));
+                vm_push(vm, val_int((to_int(a) & to_int(b))));
                 val_release(a);
                 val_release(b);
                 break;
@@ -707,7 +707,7 @@ int vm_run(VM *vm, Chunk *chunk) {
             case OP_OR: {
                 Value b = vm_pop(vm);
                 Value a = vm_pop(vm);
-                vm_push(vm, val_int((to_int(a) || to_int(b)) ? 1 : 0));
+                vm_push(vm, val_int((to_int(a) | to_int(b))));
                 val_release(a);
                 val_release(b);
                 break;
@@ -716,7 +716,7 @@ int vm_run(VM *vm, Chunk *chunk) {
             case OP_XOR: {
                 Value b = vm_pop(vm);
                 Value a = vm_pop(vm);
-                vm_push(vm, val_int((to_int(a) ^ to_int(b)) ? 1 : 0));
+                vm_push(vm, val_int(to_int(a) ^ to_int(b)));
                 val_release(a);
                 val_release(b);
                 break;
@@ -750,6 +750,13 @@ int vm_run(VM *vm, Chunk *chunk) {
                     frame->ip += offset;
                 }
                 val_release(cond);
+                break;
+            }
+
+            case OP_LOOP: {
+                uint16_t target = (uint16_t)((frame->chunk->code[frame->ip] << 8) |
+                                             frame->chunk->code[frame->ip + 1]);
+                frame->ip = target;
                 break;
             }
 

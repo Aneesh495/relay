@@ -742,7 +742,7 @@ static void while_statement(Compiler *c) {
     comp_consume(c, TOK_WEND, "Expected WEND");
 
     /* Jump back to loop start */
-    emit_byte(c, OP_JUMP);
+    emit_byte(c, OP_LOOP);
     emit_byte(c, (uint8_t)((loop_start >> 8) & 0xFF));
     emit_byte(c, (uint8_t)(loop_start & 0xFF));
 
@@ -811,6 +811,58 @@ static void assignment_or_call(Compiler *c) {
     }
 }
 
+static void for_statement(Compiler *c) {
+    comp_consume(c, TOK_IDENTIFIER, "Expected loop variable after FOR");
+    const char *name = c->previous.start;
+    size_t len = c->previous.length;
+    int var_idx = resolve_or_add_global(c, name, len);
+
+    comp_consume(c, TOK_EQUAL, "Expected '=' in FOR statement");
+    expression(c);
+    emit_bytes(c, OP_STORE_GLOBAL, (uint8_t)var_idx);
+    emit_byte(c, OP_POP);
+
+    comp_consume(c, TOK_TO, "Expected TO in FOR statement");
+
+    size_t loop_start = c->chunk->count;
+
+    emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)var_idx);
+    expression(c);
+    emit_byte(c, OP_LE);
+
+    size_t exit_jump = emit_jump(c, OP_JUMP_IF_FALSE);
+
+    if (comp_match(c, TOK_STEP)) {
+        expression(c);
+        emit_byte(c, OP_POP);
+    }
+
+    skip_statement_terminators(c);
+
+    while (!comp_check(c, TOK_NEXT) && !comp_check(c, TOK_EOF)) {
+        statement(c);
+        skip_statement_terminators(c);
+    }
+
+    comp_consume(c, TOK_NEXT, "Expected NEXT");
+    if (comp_check(c, TOK_IDENTIFIER)) {
+        comp_advance(c);
+    }
+
+    emit_bytes(c, OP_LOAD_GLOBAL, (uint8_t)var_idx);
+    int one_idx = add_constant(c, val_int(1));
+    emit_bytes(c, OP_CONST_INT, (uint8_t)one_idx);
+    emit_byte(c, OP_ADD);
+    emit_bytes(c, OP_STORE_GLOBAL, (uint8_t)var_idx);
+    emit_byte(c, OP_POP);
+
+    emit_byte(c, OP_LOOP);
+    emit_byte(c, (uint8_t)((loop_start >> 8) & 0xFF));
+    emit_byte(c, (uint8_t)(loop_start & 0xFF));
+
+    patch_jump(c, exit_jump);
+}
+
 static void statement(Compiler *c) {
     if (comp_match(c, TOK_PRINT)) {
         print_statement(c);
@@ -820,6 +872,8 @@ static void statement(Compiler *c) {
         if_statement(c);
     } else if (comp_match(c, TOK_WHILE)) {
         while_statement(c);
+    } else if (comp_match(c, TOK_FOR)) {
+        for_statement(c);
     } else if (comp_match(c, TOK_RETURN)) {
         if (!comp_check(c, TOK_NEWLINE) && !comp_check(c, TOK_COLON) && !comp_check(c, TOK_EOF)) {
             expression(c);

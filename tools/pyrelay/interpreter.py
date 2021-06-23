@@ -246,11 +246,11 @@ class Interpreter:
                 return 1 if left >= right else 0
 
             if node.op == TokenType.AND:
-                return 1 if (self._is_truthy(left) and self._is_truthy(right)) else 0
+                return int(left) & int(right)
             if node.op == TokenType.OR:
-                return 1 if (self._is_truthy(left) or self._is_truthy(right)) else 0
+                return int(left) | int(right)
             if node.op == TokenType.XOR:
-                return 1 if (bool(self._is_truthy(left)) ^ bool(self._is_truthy(right))) else 0
+                return int(left) ^ int(right)
 
         return 0.0
 
