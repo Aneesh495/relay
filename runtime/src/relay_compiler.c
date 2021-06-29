@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "relay_compiler.h"
+#include "relay_ffi.h"
 
 /* Lexer Implementation */
 void lexer_init(Lexer *lexer, const char *source) {
@@ -501,6 +502,51 @@ static void primary(Compiler *c) {
                 emit_byte(c, arg_count);
                 emit_byte(c, (uint8_t)((c->subs[found_sub].address >> 8) & 0xFF));
                 emit_byte(c, (uint8_t)(c->subs[found_sub].address & 0xFF));
+            } else if (strncasecmp(name, "ABS", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_ABS);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "SQR", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_SQR);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "EXP", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_EXP);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "LOG", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_LOG);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "SIN", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_SIN);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "COS", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_COS);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "RND", len) == 0 && len == 3) {
+                emit_bytes(c, OP_SYSCALL, SYS_MATH_RND);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "TAG_READ", len) == 0 && len == 8) {
+                emit_bytes(c, OP_SYSCALL, SYS_TAG_READ);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "TAG_WRITE", len) == 0 && len == 9) {
+                emit_bytes(c, OP_SYSCALL, SYS_TAG_WRITE);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "HIST_INGEST", len) == 0 && len == 11) {
+                emit_bytes(c, OP_SYSCALL, SYS_HIST_INGEST);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "HIST_TWA", len) == 0 && len == 8) {
+                emit_bytes(c, OP_SYSCALL, SYS_HIST_TWA);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "HIST_TOTAL", len) == 0 && len == 10) {
+                emit_bytes(c, OP_SYSCALL, SYS_HIST_TOTAL);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "MODBUS_CRC", len) == 0 && len == 10) {
+                emit_bytes(c, OP_SYSCALL, SYS_MODBUS_CRC);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "CLOCK_MS", len) == 0 && len == 8) {
+                emit_bytes(c, OP_SYSCALL, SYS_CLOCK_MS);
+                emit_byte(c, arg_count);
+            } else if (strncasecmp(name, "SLEEP_MS", len) == 0 && len == 8) {
+                emit_bytes(c, OP_SYSCALL, SYS_SLEEP_MS);
+                emit_byte(c, arg_count);
             } else {
                 /* Array indexing or unknown */
                 int local = resolve_local(c, name, len);

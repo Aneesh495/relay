@@ -175,6 +175,13 @@ static Value sys_math_rnd(VM *vm, int arg_count, Value *args) {
     return val_double(r);
 }
 
+static Value sys_math_abs(VM *vm, int arg_count, Value *args) {
+    (void)vm;
+    if (arg_count < 1) return val_double(0.0);
+    double x = args[0].type == VAL_DOUBLE ? args[0].as.double_val : (double)args[0].as.int_val;
+    return val_double(fabs(x));
+}
+
 static Value sys_console_color(VM *vm, int arg_count, Value *args) {
     (void)vm;
     if (arg_count > 0 && args[0].type == VAL_INT) {
@@ -238,6 +245,7 @@ void relay_register_host_syscalls(VM *vm) {
     vm_register_syscall(SYS_MATH_LOG, sys_math_log);
     vm_register_syscall(SYS_MATH_SQR, sys_math_sqr);
     vm_register_syscall(SYS_MATH_RND, sys_math_rnd);
+    vm_register_syscall(SYS_MATH_ABS, sys_math_abs);
 
     vm_register_syscall(SYS_CONSOLE_COLOR, sys_console_color);
     vm_register_syscall(SYS_CONSOLE_CLEAR, sys_console_clear);

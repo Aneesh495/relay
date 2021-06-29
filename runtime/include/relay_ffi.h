@@ -28,6 +28,7 @@ enum {
     SYS_MATH_SQR        = 44,
     SYS_MATH_POW        = 45,
     SYS_MATH_RND        = 46,
+    SYS_MATH_ABS        = 47,
 
     SYS_CONSOLE_COLOR   = 50,
     SYS_CONSOLE_CLEAR   = 51,
