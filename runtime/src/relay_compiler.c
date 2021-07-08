@@ -741,6 +741,9 @@ static void if_statement(Compiler *c) {
 
     skip_statement_terminators(c);
 
+    size_t exit_jumps[64];
+    int exit_jump_count = 0;
+
     size_t then_jump = emit_jump(c, OP_JUMP_IF_FALSE);
 
     while (!comp_check(c, TOK_ELSE) && !comp_check(c, TOK_ELSEIF) &&
@@ -749,12 +752,28 @@ static void if_statement(Compiler *c) {
         skip_statement_terminators(c);
     }
 
-    size_t else_jump = 0;
-    bool has_else = false;
+    while (comp_match(c, TOK_ELSEIF)) {
+        if (exit_jump_count < 64) {
+            exit_jumps[exit_jump_count++] = emit_jump(c, OP_JUMP);
+        }
+        patch_jump(c, then_jump);
+
+        expression(c);
+        comp_consume(c, TOK_THEN, "Expected THEN after ELSEIF condition");
+        skip_statement_terminators(c);
+
+        then_jump = emit_jump(c, OP_JUMP_IF_FALSE);
+        while (!comp_check(c, TOK_ELSE) && !comp_check(c, TOK_ELSEIF) &&
+               !comp_check(c, TOK_END) && !comp_check(c, TOK_EOF)) {
+            statement(c);
+            skip_statement_terminators(c);
+        }
+    }
 
     if (comp_match(c, TOK_ELSE)) {
-        has_else = true;
-        else_jump = emit_jump(c, OP_JUMP);
+        if (exit_jump_count < 64) {
+            exit_jumps[exit_jump_count++] = emit_jump(c, OP_JUMP);
+        }
         patch_jump(c, then_jump);
         skip_statement_terminators(c);
         while (!comp_check(c, TOK_END) && !comp_check(c, TOK_EOF)) {
@@ -768,8 +787,8 @@ static void if_statement(Compiler *c) {
     comp_consume(c, TOK_END, "Expected END IF");
     comp_consume(c, TOK_IF, "Expected IF after END");
 
-    if (has_else) {
-        patch_jump(c, else_jump);
+    for (int i = 0; i < exit_jump_count; ++i) {
+        patch_jump(c, exit_jumps[i]);
     }
 }
 

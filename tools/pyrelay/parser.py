@@ -322,6 +322,19 @@ class Parser:
                 then_body.append(stmt)
             self._skip_terminators()
 
+        elif_branches = []
+        while self._match(TokenType.ELSEIF):
+            elif_cond = self._expression()
+            self._consume(TokenType.THEN, "Expected THEN after ELSEIF condition")
+            self._skip_terminators()
+            elif_body = []
+            while not self._check(TokenType.ELSE) and not self._check(TokenType.ELSEIF) and not self._check(TokenType.END) and not self._check(TokenType.EOF):
+                stmt = self._statement()
+                if stmt:
+                    elif_body.append(stmt)
+                self._skip_terminators()
+            elif_branches.append((elif_cond, elif_body))
+
         else_body = []
         if self._match(TokenType.ELSE):
             self._skip_terminators()
@@ -333,7 +346,12 @@ class Parser:
 
         self._consume(TokenType.END, "Expected END IF")
         self._consume(TokenType.IF, "Expected IF after END")
-        return IfNode(cond, then_body, else_body)
+
+        current_else = else_body
+        for el_cond, el_body in reversed(elif_branches):
+            current_else = [IfNode(el_cond, el_body, current_else)]
+
+        return IfNode(cond, then_body, current_else)
 
     def _while_statement(self) -> WhileNode:
         cond = self._expression()
