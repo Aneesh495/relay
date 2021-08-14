@@ -179,7 +179,7 @@ TYPE ModbusTransactionRecord
     UnitId          AS INTEGER  ' Remote slave/station address (1 to 247)
     FunctionCode    AS INTEGER  ' Modbus function code (01, 03, 06, 16, etc.)
     StartAddress    AS INTEGER  ' Zero-based target memory offset
-    PointCount      AS INTEGER  ' Quantity of coils or registers requested
+    PointCount      AS INTEGER  ' Number of coils or registers requested
     ByteCount       AS INTEGER  ' Data payload size in bytes
     ExceptionCode   AS INTEGER  ' 0 if successful, non-zero error response
     IsCompleted     AS INTEGER  ' 1 if transaction completed, 0 if pending
